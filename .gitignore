@@ -1,0 +1,3 @@
+*.csv
+*.exe
+*.txt !requirements.txt
