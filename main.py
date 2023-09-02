@@ -5,10 +5,15 @@ import time
 import zipfile
 import requests
 import subprocess
+from getpass import getpass
 from termcolor import colored
 from bs4 import BeautifulSoup
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+import yagmail  # Import yagmail library
 
 def unzip_file(zip_link):
+    # Check if the scraper is already unzipped, if not, unzip it
     if os.path.exists('google-maps-scraper-0.9.7'):
         print(colored('=> Scraper already unzipped. Skipping unzip.', 'blue'))
         return
@@ -18,6 +23,7 @@ def unzip_file(zip_link):
     z.extractall()
 
 def build_scraper():
+    # Check if the scraper is already built, if not, build it
     if os.path.exists('google-maps-scraper.exe'):
         print(colored('=> Scraper already built. Skipping build.', 'blue'))
         return
@@ -29,6 +35,8 @@ def build_scraper():
     os.chdir('..')
 
 def run_scraper_with_args_for_30_seconds(args):
+    # Run the scraper with the specified arguments
+    print(colored('=> Running scraper...', 'blue'))
     command = 'google-maps-scraper ' + args
     try:
         scraper_process = subprocess.call(command.split(' '), shell=True, timeout=200)
@@ -46,12 +54,14 @@ def run_scraper_with_args_for_30_seconds(args):
         print(str(e))
 
 def get_items_from_file(file_name):
+    # Read and return items from a file
     with open(file_name, 'r', errors='ignore') as f:
         items = f.readlines()
         items = [item.strip() for item in items[1:]]
         return items
     
 def set_email_for_website(index, website, output_file):
+    # Extract and set an email for a website
     email = ''
 
     r = requests.get(website)
@@ -75,6 +85,13 @@ def set_email_for_website(index, website, output_file):
             csvwriter.writerows(items)
 
 def main():
+    email_sender = input('Enter your email: ')
+    email_password = getpass('Enter your password: ')
+    smtp_server = input('Enter your SMTP server: ')
+    smtp_port = input('Enter your SMTP port: ')
+    
+    print(colored('=> Logging in...', 'blue'))
+    
     zip_link = 'https://github.com/gosom/google-maps-scraper/archive/refs/tags/v0.9.7.zip'
     unzip_file(zip_link)
 
@@ -88,15 +105,35 @@ def main():
     items = get_items_from_file(output_file)
     print(f'=> Scraped {len(items)} items.')
     time.sleep(5)
+    
+    # Create a yagmail SMTP client outside the loop
+    yag = yagmail.SMTP(email_sender, email_password, smtp_server=smtp_server, smtp_port=smtp_port)
+    
     for item in items:
-        # Find the website, starts with http
         website = item.split(',')
         website = [w for w in website if w.startswith('http')]
         website = website[0] if len(website) > 0 else ''
         if website != '':
             set_email_for_website(items.index(item), website, output_file)
+        
+        # Send emails using the existing SMTP connection
+        receiver_email = item[-1]
+        subject = f'Say goodbye to taking calls with SealSage AI: {item[0]}'
+        body = f'This is the text of your email for {item[1]}'
+        
+        yag.send(
+            to=receiver_email,
+            subject=subject,
+            contents=body,
+        )
+
+    # Close the SMTP connection
+    yag.close()
 
     print(colored('=> Done.', 'green'))
 
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+    except Exception as err:
+        print(colored(f'An error occurred: {err}', 'red'))
