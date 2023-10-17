@@ -1,17 +1,15 @@
 import io
 import os
+import re
 import csv
 import sys
 import time
 import zipfile
+import yagmail
 import requests
 import subprocess
 from getpass import getpass
 from termcolor import colored
-from bs4 import BeautifulSoup
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
-import yagmail  # Import yagmail library
 
 def is_go_installed():
     # Check if go is installed
@@ -75,12 +73,13 @@ def set_email_for_website(index, website, output_file):
 
     r = requests.get(website)
     if r.status_code == 200:
-        soup = BeautifulSoup(r.text, 'html.parser')
-        email_tags = soup.find_all('a')
-        email_list = [e.text for e in email_tags if '@' in e.text]
+        # Define a regular expression pattern to match email addresses
+        email_pattern = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,7}\b'
 
-        email_list = [e for e in email_list if len(e.split('@')[0]) > 0]
-        email = email_list[0] if len(email_list) > 0 else ''
+        # Find all email addresses in the HTML string
+        email_addresses = re.findall(email_pattern, r.text)
+
+        email = email_addresses[0] if len(email_addresses) > 0 else ''
 
     if email:
         print(f'=> Setting email {email} for website {website}')

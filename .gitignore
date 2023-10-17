@@ -1,5 +1,7 @@
+# Files generated during scraping process
 *.csv
 *.exe
 *.txt
 *.html
+
 google-maps-scraper*
