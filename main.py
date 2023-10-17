@@ -116,7 +116,7 @@ def whole_process(emails_set = False, timeout = 200):
 
     build_scraper()
 
-    run_scraper_with_args_for_30_seconds(f'-input {keywords_file} -results {output_file} -exit-on-inactivity 3m', timeout=timeout)
+    run_scraper_with_args_for_30_seconds(f'-input {keywords_file} -results {output_file}', timeout=timeout)
 
     items = get_items_from_file(output_file)
     print(colored(f'=> Scraped {len(items)} items.', 'blue'))
@@ -181,7 +181,7 @@ def just_scrape(emails_set, timeout = 200):
 
     build_scraper()
 
-    run_scraper_with_args_for_30_seconds(f'-input {keywords_file} -results {output_file} -exit-on-inactivity 3m', timeout)
+    run_scraper_with_args_for_30_seconds(f'-input {keywords_file} -results {output_file}', timeout)
 
 
     items = get_items_from_file(output_file)
