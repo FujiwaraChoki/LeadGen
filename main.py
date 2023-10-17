@@ -93,7 +93,7 @@ def set_email_for_website(index, website, output_file):
             csvwriter = csv.writer(csvfile)
             csvwriter.writerows(items)
 
-def whole_process():
+def whole_process(emails_set = False):
     email_sender = input('Enter your email: ')
     email_password = getpass('Enter your password: ')
     smtp_server = input('Enter your SMTP server: ')
@@ -125,32 +125,44 @@ def whole_process():
     print(colored('=> Logging into SMTP-Server...', 'blue'))
     
     # Create a yagmail SMTP client outside the loop
-    yag = yagmail.SMTP(email_sender, email_password, smtp_server=smtp_server, smtp_port=smtp_port)
+    yag = yagmail.SMTP(user=email_sender, password=email_password, host=smtp_server, port=smtp_port)
     
     for item in items:
-        website = item.split(',')
-        website = [w for w in website if w.startswith('http')]
-        website = website[0] if len(website) > 0 else ''
-        if website != '':
-            set_email_for_website(items.index(item), website, output_file)
-        
-        # Send emails using the existing SMTP connection
-        receiver_email = item[-1]
-        subject = message_subject.replace('{{COMPANY_NAME}}', item[0])
-        body = open(message_body, 'r').read().replace('{{COMPANY_NAME}}', item[0])
-        
-        yag.send(
-            to=receiver_email,
-            subject=subject,
-            contents=body,
-        )
+        try:
+            # Check if the item's website is valid
+            website = item.split(',')
+            website = [w for w in website if w.startswith('http')]
+            website = website[0] if len(website) > 0 else ''
+            if website != '':
+                test_r = requests.get(website)
+                if test_r.status_code == 200:
+                    if not emails_set:
+                        set_email_for_website(items.index(item), website, output_file)
+                    
+                    # Send emails using the existing SMTP connection
+                    receiver_email = item.split(',')[-1]
 
-        print(colored(f'=> Sent email to {receiver_email}', 'blue'))
+                    if '@' not in receiver_email:
+                        print(colored(f'=> No email provided. Skipping...', 'blue'))
+                        continue
 
-    # Close the SMTP connection
-    yag.close()
+                    subject = message_subject.replace('{{COMPANY_NAME}}', item[0])
+                    body = open(message_body, 'r').read().replace('{{COMPANY_NAME}}', item[0])
 
-    print(colored('=> Done.', 'green'))
+                    print(colored(f'=> Sending email to {receiver_email}...', 'blue'))
+                    
+                    yag.send(
+                        to=receiver_email,
+                        subject=subject,
+                        contents=body,
+                    )
+
+                    print(colored(f'=> Sent email to {receiver_email}', 'blue'))
+                else:
+                    print(colored(f'=> Website {website} is invalid. Skipping...', 'red'))
+        except Exception as err:
+            print(colored(f'=> Error: {err}...', 'red'))
+            continue
 
 def just_scrape():
     keywords_file = input('Enter the name of the keywords file: ')
@@ -247,7 +259,12 @@ def main():
         if arg == "--mode":
             next_word = args[args.index(arg) + 1]
             if next_word == "default":
-                whole_process()
+                emails_set = input('Have you already set the emails for the scraped companies? (y/n): ')
+                if emails_set.lower() == 'y':
+                    emails_set = True
+                else:
+                    emails_set = False
+                whole_process(emails_set)
             elif next_word == 'scrape':
                 just_scrape()
             elif next_word == 'email':
