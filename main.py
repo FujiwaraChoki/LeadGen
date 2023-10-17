@@ -8,6 +8,7 @@ import zipfile
 import yagmail
 import requests
 import subprocess
+
 from getpass import getpass
 from termcolor import colored
 
@@ -41,12 +42,12 @@ def build_scraper():
     os.system('mv google-maps-scraper ../google-maps-scraper')
     os.chdir('..')
 
-def run_scraper_with_args_for_30_seconds(args):
+def run_scraper_with_args_for_30_seconds(args, timeout = 300):
     # Run the scraper with the specified arguments
     print(colored('=> Running scraper...', 'blue'))
     command = 'google-maps-scraper ' + args
     try:
-        scraper_process = subprocess.call(command.split(' '), shell=True, timeout=200)
+        scraper_process = subprocess.call(command.split(' '), shell=True, timeout=timeout)
 
         if scraper_process == 0:
             subprocess.call('taskkill /f /im google-maps-scraper.exe', shell=True)
@@ -92,7 +93,7 @@ def set_email_for_website(index, website, output_file):
             csvwriter = csv.writer(csvfile)
             csvwriter.writerows(items)
 
-def whole_process(emails_set = False):
+def whole_process(emails_set = False, timeout = 200):
     email_sender = input('Enter your email: ')
     email_password = getpass('Enter your password: ')
     smtp_server = input('Enter your SMTP server: ')
@@ -115,7 +116,7 @@ def whole_process(emails_set = False):
 
     build_scraper()
 
-    run_scraper_with_args_for_30_seconds(f'-input {keywords_file} -results {output_file} -exit-on-inactivity 3m')
+    run_scraper_with_args_for_30_seconds(f'-input {keywords_file} -results {output_file} -exit-on-inactivity 3m', timeout=timeout)
 
     items = get_items_from_file(output_file)
     print(colored(f'=> Scraped {len(items)} items.', 'blue'))
@@ -163,7 +164,7 @@ def whole_process(emails_set = False):
             print(colored(f'=> Error: {err}...', 'red'))
             continue
 
-def just_scrape():
+def just_scrape(timeout = 200):
     keywords_file = input('Enter the name of the keywords file: ')
     output_file = input('Enter the name of the output file: ')
 
@@ -182,9 +183,26 @@ def just_scrape():
 
     run_scraper_with_args_for_30_seconds(f'-input {keywords_file} -results {output_file} -exit-on-inactivity 3m')
 
+
     items = get_items_from_file(output_file)
     print(colored(f'=> Scraped {len(items)} items.', 'blue'))
     time.sleep(5)
+
+    for item in items:
+        try:
+            # Check if the item's website is valid
+            website = item.split(',')
+            website = [w for w in website if w.startswith('http')]
+            website = website[0] if len(website) > 0 else ''
+            if website != '':
+                test_r = requests.get(website)
+                if test_r.status_code == 200:
+                    set_email_for_website(items.index(item), website, output_file)
+                else:
+                    print(colored(f'=> Website {website} is invalid. Skipping...', 'red'))
+        except Exception as err:
+            print(colored(f'=> Error: {err}...', 'red'))
+            continue
 
     print(colored('=> Done.', 'green'))
 
@@ -252,6 +270,7 @@ def main():
     args = sys.argv[1:]
 
     if len(args) == 0:
+        print(colored('=> No arguments provided. Running default mode...', 'blue'))
         whole_process()
 
     for arg in args:
@@ -263,9 +282,17 @@ def main():
                     emails_set = True
                 else:
                     emails_set = False
-                whole_process(emails_set)
+                if '--timeout' in args:
+                    timeout = args[args.index('--timeout') + 1]
+                    whole_process(emails_set, timeout)
+                else:
+                    whole_process(emails_set)
             elif next_word == 'scrape':
-                just_scrape()
+                if '--timeout' in args:
+                    timeout = args[args.index('--timeout') + 1]
+                    just_scrape(emails_set, timeout)
+                else:
+                    just_scrape(emails_set)
             elif next_word == 'email':
                 emails_set = input('Have you already set the emails for the scraped companies? (y/n): ')
                 if emails_set.lower() == 'y':
