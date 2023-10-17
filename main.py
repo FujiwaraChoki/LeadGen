@@ -218,7 +218,6 @@ def send_emails(emails_set = False):
                     body = open(message_body, 'r').read().replace('{{COMPANY_NAME}}', item[0])
 
                     print(colored(f'=> Sending email to {receiver_email}...', 'blue'))
-                    print("ITEM: ", item)
                     
                     yag.send(
                         to=receiver_email,
