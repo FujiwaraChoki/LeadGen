@@ -1,4 +1,5 @@
 *.csv
 *.exe
 *.txt
+*.html
 google-maps-scraper*
