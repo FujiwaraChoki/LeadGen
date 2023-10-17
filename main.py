@@ -47,7 +47,7 @@ def run_scraper_with_args_for_30_seconds(args, timeout = 300):
     print(colored('=> Running scraper...', 'blue'))
     command = 'google-maps-scraper ' + args
     try:
-        scraper_process = subprocess.call(command.split(' '), shell=True, timeout=timeout)
+        scraper_process = subprocess.call(command.split(' '), shell=True, timeout=float(timeout))
 
         if scraper_process == 0:
             subprocess.call('taskkill /f /im google-maps-scraper.exe', shell=True)
@@ -164,7 +164,7 @@ def whole_process(emails_set = False, timeout = 200):
             print(colored(f'=> Error: {err}...', 'red'))
             continue
 
-def just_scrape(timeout = 200):
+def just_scrape(emails_set, timeout = 200):
     keywords_file = input('Enter the name of the keywords file: ')
     output_file = input('Enter the name of the output file: ')
 
@@ -181,28 +181,29 @@ def just_scrape(timeout = 200):
 
     build_scraper()
 
-    run_scraper_with_args_for_30_seconds(f'-input {keywords_file} -results {output_file} -exit-on-inactivity 3m')
+    run_scraper_with_args_for_30_seconds(f'-input {keywords_file} -results {output_file} -exit-on-inactivity 3m', timeout)
 
 
     items = get_items_from_file(output_file)
     print(colored(f'=> Scraped {len(items)} items.', 'blue'))
     time.sleep(5)
 
-    for item in items:
-        try:
-            # Check if the item's website is valid
-            website = item.split(',')
-            website = [w for w in website if w.startswith('http')]
-            website = website[0] if len(website) > 0 else ''
-            if website != '':
-                test_r = requests.get(website)
-                if test_r.status_code == 200:
-                    set_email_for_website(items.index(item), website, output_file)
-                else:
-                    print(colored(f'=> Website {website} is invalid. Skipping...', 'red'))
-        except Exception as err:
-            print(colored(f'=> Error: {err}...', 'red'))
-            continue
+    if not emails_set:
+        for item in items:
+            try:
+                # Check if the item's website is valid
+                website = item.split(',')
+                website = [w for w in website if w.startswith('http')]
+                website = website[0] if len(website) > 0 else ''
+                if website != '':
+                    test_r = requests.get(website)
+                    if test_r.status_code == 200:
+                        set_email_for_website(items.index(item), website, output_file)
+                    else:
+                        print(colored(f'=> Website {website} is invalid. Skipping...', 'red'))
+            except Exception as err:
+                print(colored(f'=> Error: {err}...', 'red'))
+                continue
 
     print(colored('=> Done.', 'green'))
 
@@ -275,21 +276,21 @@ def main():
 
     for arg in args:
         if arg == "--mode":
+            emails_set = input('Have you already set the emails for the scraped companies? (y/n): ')
             next_word = args[args.index(arg) + 1]
             if next_word == "default":
-                emails_set = input('Have you already set the emails for the scraped companies? (y/n): ')
                 if emails_set.lower() == 'y':
                     emails_set = True
                 else:
                     emails_set = False
                 if '--timeout' in args:
-                    timeout = args[args.index('--timeout') + 1]
+                    timeout = args[int(args.index('--timeout')) + 1]
                     whole_process(emails_set, timeout)
                 else:
                     whole_process(emails_set)
             elif next_word == 'scrape':
                 if '--timeout' in args:
-                    timeout = args[args.index('--timeout') + 1]
+                    timeout = args[int(args.index('--timeout')) + 1]
                     just_scrape(emails_set, timeout)
                 else:
                     just_scrape(emails_set)
