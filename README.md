@@ -6,7 +6,7 @@ This program uses the [Google Maps Scraper](https://github.com/gosom/google-maps
 
 1. Install [Python 3](https://www.python.org/downloads/)
 2. Install [Go](https://golang.org/doc/install)
-3. Clone this repository `git clone https://github.com/FujiwaraChoki/reacher.git`
+3. Clone this repository `git clone https://github.com/FujiwaraChoki/LeadGen.git`
 4. Install the dependencies `pip install -r requirements.txt`
 
 ## Usage
